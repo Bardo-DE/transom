@@ -48,3 +48,9 @@ Ignored tests: P2-T1 1, P2-T2 2 (`crates/transom/tests/it/fill.rs`).
   a row in `crates/transom-core/tests/it/screencast.rs`; anything else leaves the session as it is.
 - A restore token resolves all or nothing, and only for the app it was given to.
 - No accent chosen is published as an out-of-range colour, as the specification says.
+
+## boundary T3 (2026-10-11)
+
+T3 counts a `pipewire::` path as the crate only when it does not follow `::` or an identifier, so
+`self::pipewire::` and `screencast::pipewire::` (transom's own module) pass. It misses the rare absolute
+form `::pipewire::`; write crate paths plainly.
