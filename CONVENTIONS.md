@@ -1,33 +1,28 @@
 # Conventions
 
-transom follows the program's shared conventions: small typed structs, enums instead of `bool`
-fields and parameters, typed errors (`thiserror`), no `unsafe`, short files, doc comments on every
-public item, tests that never touch the real system. `ARCHITECTURE.md` here has the crate map and
-the seams.
+This repo follows the published Rust guides instead of a house style:
 
-1. **Library first.** `transom-core` is pure and usable on its own; `transom` is a library with
-   a thin `main.rs`. Every real I/O (pixels in, pixels out, tokens at rest, the chooser, the
-   appearance) sits behind a trait with its fake exported from the same crate.
-2. **Wire values stay at the edge.** The portal's integers and dictionaries become enums and
-   structs in the interface files (`screencast/mod.rs` and its siblings); `transom-core` never
-   sees a `u32` that means something except through a `from_wire`/`to_wire` pair.
-3. **No panics on a bad request.** A malformed call is a refusal code in the reply, not a panic.
-   `unwrap` and `expect` only in tests.
-4. **Time, randomness and the environment are arguments.** Only `main.rs` reads the
-   environment; restore tokens are minted from bytes the caller drew.
-5. **Secrets.** A restore token is a bearer secret: redacted `Debug`, never logged, stored in a
-   file readable by its owner only.
-6. **Plain language.** Nothing a person sees (the chooser's title, a notification) names a
-   protocol, a bus or a bundle id; the app is shown by its own name.
-7. **Licence hygiene.** transom is MIT OR Apache-2.0. `xdg-desktop-portal` is a separate
-   process we talk to over D-Bus: never linked, never copied. Other portal backends are read for
-   facts only (what a key means, what a client expects), never for code; their names stay out of
-   the code (`scripts/check-boundary.sh`, row T8). Dependencies must pass `deny.toml`.
-8. **`todo!()` lives on master only behind a frozen interface.** Each has a row in
-   `FINDINGS.md` naming its fill lane and the test that proves it; that test is written and
-   `#[ignore = "<lane>"]`d. A `todo!()` body binds its arguments (`let _ = (a, b);`), and private
-   state a frozen body will read carries `#[expect(dead_code, reason = "<lane>")]`.
-9. **`#[non_exhaustive]`** on public enums that will grow; `Copy` only for heap-free values of
-   at most two words.
-10. **`cargo fmt -p <crate>`** to write; the gate runs `cargo fmt --all --check`.
-11. **One test binary per crate** (`tests/it/main.rs`), tables over one-off cases.
+- [Rust Style Guide](https://doc.rust-lang.org/style-guide/): formatting. `cargo fmt` applies it.
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/): naming, API shape,
+  documentation, interoperability.
+- [Microsoft Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/): libraries,
+  applications, errors, safety, performance, documentation.
+
+## Design
+
+On top of the guides, write Rust roughly the way you would write Haskell:
+
+1. **Push IO to the edges.** Decisions live in pure functions: data in, data out, for example
+   `step(state, event) -> (state, effects)`. A thin shell reads the world, calls the core and
+   carries out the effects it returns. No IO, clocks or threads inside the core.
+   See [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell)
+   and [sans-IO](https://firezone.dev/blog/sans-io).
+2. **Let types carry the facts.** Parse input once, at the edge, into types that only hold valid
+   values, and don't check again past it. Use enums so impossible states can't be written.
+   See [Parse, don't validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/)
+   and [Type-Driven API Design in Rust](https://willcrichton.net/rust-api-type-patterns/).
+3. **Judgement, not rules.** These are directions, not quotas. A `bool`, a `String` or a plain
+   struct is fine when a type would add nothing. Don't add a newtype or a state machine that no
+   bug and no reader needs.
+
+The repo's own structure (crates, layers, where each concept lives) is in ARCHITECTURE.md.
